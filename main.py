@@ -2,10 +2,10 @@ import os                                          # for creating the plots fold
 import numpy as np                                 # numeric arrays, thresholds, math
 import librosa                                      # audio loading + RMS energy framing
 import matplotlib.pyplot as plt                     # plotting and saving figures
-from scipy.signal import butter, sosfiltfilt, find_peaks        # Butterworth bandpass filter design + zero-phase application
+from scipy.signal import butter, sosfiltfilt, find_peaks, hilbert        # Butterworth bandpass filter design + zero-phase application
 import librosa.display                             # for spectrogram matrix
 
-
+WATERMELON_MASS = 5000              # 5000 grams
 AUDIO_PATH = "./audio/sample_2.wav"   
 PLOTS_DIR = "plots"                
 LOW_HZ = 80                         # bandpass: frequencies below this are removed (rumble/DC drift)
@@ -205,6 +205,46 @@ def plot_resonance_window(audio, sr, tap_sample, start_sample, end_sample, title
     print(f"Saved: {save_path}")      # confirm output location
 
 # feature extraction pipeline
+def extract_time_domain_features(audio, sample_rate):
+    """
+    Extracts features directly from the raw time-domain voltage waveform.
+    Parameters:
+    - audio_data (np.ndarray): 1D array of raw audio amplitudes.
+    - sample_rate (int): Sampling rate of the audio.
+    
+    Returns:
+    - dict: Time-domain metrics (amplitude, energy, ZCR, decay rate).
+    """
+    time_features = {}
+    
+    # Peak Amplitude (A_max)
+    time_features['peak_amplitude'] = float(np.max(np.abs(audio)))
+    
+    # RMS Energy
+    time_features['rms_energy'] = float(np.sqrt(np.mean(audio ** 2)))
+    
+    # Zero-Crossing Rate (ZCR)
+    zero_crossings = np.where(np.diff(np.sign(audio)))[0]
+    time_features['zero_crossing_rate'] = float(len(zero_crossings) / len(audio))
+    
+    # Damping Coefficient (Alpha) via Hilbert Transform Envelope
+    analytic_signal = hilbert(audio)
+    amplitude_envelope = np.abs(analytic_signal)
+    # Prevent log(0) errors
+    amplitude_envelope = np.where(amplitude_envelope == 0, 1e-8, amplitude_envelope)
+    log_envelope = np.log(amplitude_envelope) 
+    # Fit line: log(amplitude) = alpha * time + intercept
+    time_axis = np.arange(len(audio)) / sample_rate
+    slope, _ = np.polyfit(time_axis, log_envelope, 1)
+    
+    time_features['damping_coefficient'] = float(slope)
+    
+    return time_features
+
+
+
+
+
 def analyze_resonance_fft(resonance_audio, sr, title, save_path, low_hz=LOW_HZ, high_hz=HIGH_HZ):
     """
     Compute the FFT of the resonance window, find the dominant frequency (Fmax),
@@ -304,9 +344,13 @@ def main():
     )                                                                   
     print(f"Resonance window: {start_sample/sr:.4f}s -> {end_sample/sr:.4f}s "
           f"({(end_sample-start_sample)/sr:.4f}s long)")                  # report the extracted window's bounds
-    plot_resonance_window(filtered, sr, tap_sample, start_sample, end_sample,
+    plot_resonance_window(resonance_audio, sr, tap_sample, start_sample, end_sample,
                            "Resonance Window Extraction",
                            os.path.join(PLOTS_DIR, "resonance_window.png"))  
+
+    # take the time domain features and console log it 
+    time_domain_features = extract_time_domain_features(resonance_audio, sample_rate=sr)
+    print(time_domain_features)
 
     print("Maximum Frequency from this audio file is: ", analyze_resonance_fft(resonance_audio, sr, title="Frequency Distribution", save_path=os.path.join(PLOTS_DIR,"FFT Graph.png")))
     
