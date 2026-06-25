@@ -4,6 +4,7 @@ import librosa                                      # audio loading + RMS energy
 import matplotlib.pyplot as plt                     # plotting and saving figures
 from scipy.signal import butter, sosfiltfilt, find_peaks, hilbert        # Butterworth bandpass filter design + zero-phase application
 import librosa.display                             # for spectrogram matrix
+from scipy.stats import skew, kurtosis
 
 WATERMELON_MASS = 5000              # 5000 grams
 AUDIO_PATH = "./audio/sample_2.wav"   
@@ -241,7 +242,54 @@ def extract_time_domain_features(audio, sample_rate):
     
     return time_features
 
-
+def extract_frequency_domain_features(audio_data, sample_rate, mass_g):
+    """
+    Converts audio to the frequency domain via FFT and extracts spectral features
+    within the watermelon resonance band (50Hz - 500Hz).
+    
+    Parameters:
+    - audio_data (np.ndarray): 1D array of raw audio amplitudes.
+    - sample_rate (int): Sampling rate of the audio.
+    - mass_g (float): Mass of the watermelon in grams.
+    
+    Returns:
+    - dict: Frequency-domain metrics (pitch, stiffness, spectral shape).
+    """
+    # Convert to float and remove DC hardware offset baseline
+    audio = np.array(audio_data, dtype=float)
+    audio = audio - np.mean(audio)
+    
+    freq_features = {}
+    
+    # Compute Real Fast Fourier Transform (RFFT)
+    fft_vals = np.abs(np.fft.rfft(audio))
+    fft_freqs = np.fft.rfftfreq(len(audio), d=1.0/sample_rate)
+    
+    # Target only the physical watermelon resonance zone
+    band_mask = (fft_freqs >= 50) & (fft_freqs <= 500)
+    filtered_freqs = fft_freqs[band_mask]
+    filtered_amps = fft_vals[band_mask]
+    
+    if len(filtered_amps) > 0 and np.sum(filtered_amps) > 0:
+        # Dominant Resonant Frequency (f_peak)
+        peak_idx = np.argmax(filtered_amps)
+        peak_freq = filtered_freqs[peak_idx]
+        freq_features['peak_frequency_hz'] = float(peak_freq)
+        
+        # Acoustic Stiffness Index (S)
+        freq_features['stiffness_index'] = float((peak_freq ** 2) * (mass_g ** (2/3)))
+        
+        # Spectral Distribution Stats
+        freq_features['spectral_skewness'] = float(skew(filtered_amps))
+        freq_features['spectral_kurtosis'] = float(kurtosis(filtered_amps))
+    else:
+        # Error security fallbacks if clip is dead air
+        freq_features['peak_frequency_hz'] = 0.0
+        freq_features['stiffness_index'] = 0.0
+        freq_features['spectral_skewness'] = 0.0
+        freq_features['spectral_kurtosis'] = 0.0
+        
+    return freq_features
 
 
 
@@ -351,6 +399,10 @@ def main():
     # take the time domain features and console log it 
     time_domain_features = extract_time_domain_features(resonance_audio, sample_rate=sr)
     print(time_domain_features)
+
+    # take the frequency domain features and console log it 
+    frequency_domain_features = extract_frequency_domain_features(resonance_audio, sr,WATERMELON_MASS)
+    print(frequency_domain_features)
 
     print("Maximum Frequency from this audio file is: ", analyze_resonance_fft(resonance_audio, sr, title="Frequency Distribution", save_path=os.path.join(PLOTS_DIR,"FFT Graph.png")))
     
