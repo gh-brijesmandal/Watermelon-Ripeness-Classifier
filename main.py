@@ -1,8 +1,3 @@
-"""
-It loads the audio, filters it, normalizes it, detects the tap,
-extracts the resonance window, and saves every plot into ./plots/.
-"""
-
 import os                                          # for creating the plots folder and building file paths
 import numpy as np                                 # numeric arrays, thresholds, math
 import librosa                                      # audio loading + RMS energy framing
@@ -10,37 +5,23 @@ import matplotlib.pyplot as plt                     # plotting and saving figure
 from scipy.signal import butter, sosfiltfilt, find_peaks        # Butterworth bandpass filter design + zero-phase application
 import librosa.display                             # for spectrogram matrix
 
-# =============================================================================
-# CONFIG - edit these for your own run
-# =============================================================================
 
-AUDIO_PATH = "./audio/sample_2.wav"   # path to the watermelon tap recording you want to analyze
-PLOTS_DIR = "plots"                 # folder where all output plots get saved (created if missing)
-
+AUDIO_PATH = "./audio/sample_2.wav"   
+PLOTS_DIR = "plots"                
 LOW_HZ = 80                         # bandpass: frequencies below this are removed (rumble/DC drift)
 HIGH_HZ = 2000                      # bandpass: frequencies above this are removed (hiss/high-freq noise)
 FILTER_ORDER = 4                    # Butterworth filter steepness (4 = gentle, safe default)
-
-TARGET_RMS = 0.1                    # RMS normalization target level (keeps loudness comparable across files)
-
 TAP_K = 8.0                         # tap detector: how many MADs above background energy counts as a tap
 TAP_IGNORE_START_SEC = 0.02         # tap detector: ignore this much audio at the very start (edge artifacts)
-
 RESONANCE_GAP_SEC = 0.02            # resonance window: skip this much time right after the tap (clears the click)
 RESONANCE_WINDOW_SEC = 0.3          # resonance window: total length of the extracted resonance window
 RESONANCE_SEARCH_SEC = 0.5          # resonance window: how far past the gap to search for the resonance peak
 
-
-# =============================================================================
-# 1. LOAD + PLOT RAW AUDIO
-# =============================================================================
-
+# audio extraction and filtering pipeline
 def load_audio(path, sr=None, mono=True):
     """Load an audio file from disk and return (audio_samples, sample_rate)."""
     audio, sr = librosa.load(path, sr=sr, mono=mono)   # librosa reads the file and resamples if sr is given
     return audio, sr                                    # hand back both the waveform and the rate used
-
-
 def plot_audio(audio, sr, title, save_path):
     """Plot a waveform against a real time axis (seconds) and save it to disk."""
     t = np.arange(len(audio)) / sr           # build a time axis: sample index / sample rate = seconds
@@ -56,12 +37,6 @@ def plot_audio(audio, sr, title, save_path):
     plt.savefig(save_path, dpi=150)          # write the figure to disk as an image file
     plt.close(fig)                           # close the figure to free memory (important in batch scripts)
     print(f"Saved: {save_path}")             # confirm to the user where the file went
-
-
-# =============================================================================
-# 2. BANDPASS FILTER
-# =============================================================================
-
 def bandpass_filter(audio, sr, low_hz=LOW_HZ, high_hz=HIGH_HZ, order=FILTER_ORDER):
     """
     Bandpass filter the audio with a zero-phase Butterworth filter.
@@ -78,30 +53,6 @@ def bandpass_filter(audio, sr, low_hz=LOW_HZ, high_hz=HIGH_HZ, order=FILTER_ORDE
     # cast back to a safe float32 dtype matching audio's type, since sosfiltfilt returns float64
     out_dtype = audio.dtype if np.issubdtype(audio.dtype, np.floating) else np.float32
     return filtered.astype(out_dtype)                        # return filtered samples, same shape as input
-
-
-# =============================================================================
-# 3. RMS NORMALIZATION
-# =============================================================================
-
-def rms_normalize(audio, target_rms=TARGET_RMS, eps=1e-9):
-    """
-    Rescale audio so its RMS (average energy level) equals target_rms.
-    Needed because mic distance / gain / tap force vary recording to recording;
-    without this, features measure recording conditions, not watermelon ripeness.
-    RMS (not peak) normalization is used because a single sharp tap transient
-    would otherwise dominate a peak-based scale factor.
-    """
-    current_rms = np.sqrt(np.mean(audio ** 2))   # compute current RMS: sqrt(mean(signal^2))
-    gain = target_rms / (current_rms + eps)      # gain factor needed to reach the target RMS (eps avoids /0)
-    normalized = audio * gain                    # apply the gain uniformly to every sample
-    return normalized                             # return rescaled audio, same shape as input
-
-
-# =============================================================================
-# 4. TAP DETECTION (accurate version: raw signal + robust threshold + refinement)
-# =============================================================================
-
 def detect_tap(raw_audio, sr, frame_length=128, hop_length=32, k=TAP_K,
                ignore_start_sec=TAP_IGNORE_START_SEC, bg_window_sec=0.03):
     """
@@ -165,8 +116,6 @@ def detect_tap(raw_audio, sr, frame_length=128, hop_length=32, k=TAP_K,
 
     tap_time = tap_sample / sr                                   # convert final sample index to seconds
     return tap_sample, tap_time, energy, energy_times            # return detection + energy curve (for plotting)
-
-
 def plot_tap_detection(audio, sr, tap_sample, energy, energy_times, title, save_path):
     """Plot the waveform with the detected tap marked, plus the energy curve below it, and save to disk."""
     t = np.arange(len(audio)) / sr        # time axis for the waveform plot
@@ -192,12 +141,6 @@ def plot_tap_detection(audio, sr, tap_sample, energy, energy_times, title, save_
     plt.savefig(save_path, dpi=150)    # save the combined figure to disk
     plt.close(fig)                     # free memory
     print(f"Saved: {save_path}")       # confirm output location
-
-
-# =============================================================================
-# 5. RESONANCE WINDOW EXTRACTION
-# =============================================================================
-
 def extract_resonance_window(audio, sr, tap_sample, gap=RESONANCE_GAP_SEC,
                               window_duration=RESONANCE_WINDOW_SEC, search_after=RESONANCE_SEARCH_SEC):
     """
@@ -237,8 +180,6 @@ def extract_resonance_window(audio, sr, tap_sample, gap=RESONANCE_GAP_SEC,
 
     resonance_audio = audio[start_sample:end_sample]   # slice out the final resonance window
     return resonance_audio, start_sample, end_sample     # return the audio plus its sample-index bounds
-
-
 def plot_resonance_window(audio, sr, tap_sample, start_sample, end_sample, title, save_path):
     """Plot the full waveform with the tap and resonance window highlighted, and save to disk."""
     t = np.arange(len(audio)) / sr           # time axis for the full waveform
@@ -263,11 +204,7 @@ def plot_resonance_window(audio, sr, tap_sample, start_sample, end_sample, title
     plt.close(fig)                    # free memory
     print(f"Saved: {save_path}")      # confirm output location
 
-
-# =============================================================================
-# 6. FREQUENCY DOMAIN ANALYSIS (FFT + PEAK FINDING)
-# =============================================================================
-
+# feature extraction pipeline
 def analyze_resonance_fft(resonance_audio, sr, title, save_path, low_hz=LOW_HZ, high_hz=HIGH_HZ):
     """
     Compute the FFT of the resonance window, find the dominant frequency (Fmax),
@@ -339,118 +276,43 @@ def analyze_resonance_fft(resonance_audio, sr, title, save_path, low_hz=LOW_HZ, 
     print(f"Saved FFT Plot: {save_path} | Fmax = {f_max:.2f} Hz")
     return f_max
 
-
-# =============================================================================
-# 7. TIME-FREQUENCY SPECTROGRAM (STFT)
-# =============================================================================
-
-def plot_resonance_spectrogram(resonance_audio, sr, title, save_path, low_hz=LOW_HZ, high_hz=HIGH_HZ):
-    """
-    Computes the Short-Time Fourier Transform (STFT) of the resonance window
-    and plots a frequency vs. time heat map (Spectrogram).
-    """
-    # Short windows for high time resolution on a brief 300ms signal
-    n_fft = 256
-    hop_length = 16 
-
-    # Compute the Short-Time Fourier Transform
-    stft_matrix = librosa.stft(resonance_audio, n_fft=n_fft, hop_length=hop_length)
-    
-    # Convert amplitude to Decibels (dB) relative to the peak energy
-    stft_db = librosa.amplitude_to_db(np.abs(stft_matrix), ref=np.max)
-
-    fig, ax = plt.subplots(figsize=(11, 5))
-    
-    # Draw the spectrogram heat map
-    img = librosa.display.specshow(
-        stft_db, 
-        sr=sr, 
-        hop_length=hop_length, 
-        x_axis='time', 
-        y_axis='linear', 
-        ax=ax, 
-        cmap='magma'  # 'magma' or 'viridis' work brilliantly for acoustic energy
-    )
-    
-    ax.set_title(title)
-    ax.set_xlabel("Time inside Window (seconds)")
-    ax.set_ylabel("Frequency (Hz)")
-    
-    # Zoom into the watermelon frequency band of interest
-    ax.set_ylim(max(0, low_hz - 50), high_hz + 50)
-    
-    # Add a color bar scale to indicate energy levels
-    cbar = fig.colorbar(img, ax=ax, format="%+2.0f dB")
-    cbar.set_label("Relative Energy (dB)")
-
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150)
-    plt.close(fig)
-    
-    print(f"Saved Spectrogram Plot: {save_path}")
-
-
-
-# =============================================================================
-# MAIN - runs the full pipeline end to end, one shot
-# =============================================================================
-
 def main():
-    if not os.path.exists(AUDIO_PATH):   # check the audio file actually exists before doing anything else
+    if not os.path.exists(AUDIO_PATH):  
         raise FileNotFoundError(
             f"Could not find '{AUDIO_PATH}'. Set AUDIO_PATH at the top of this file "
             "to the path of your recording."
-        )                                  # clear, actionable error instead of a raw library traceback
+        )                                
+    
+    os.makedirs(PLOTS_DIR, exist_ok=True)  
 
-    os.makedirs(PLOTS_DIR, exist_ok=True)   # create the plots folder if it doesn't already exist
-
-    # ---- 1. load + plot raw audio ----
     audio, sr = load_audio(AUDIO_PATH, sr=None)                     # load the file at its native sample rate
     print(f"Loaded '{AUDIO_PATH}': sr={sr} Hz, duration={len(audio)/sr:.3f}s")  # quick console summary
-    plot_audio(audio, sr, "1. Raw Audio", os.path.join(PLOTS_DIR, "01_raw_audio.png"))  # save raw waveform plot
+    plot_audio(audio, sr, " Raw Audio", os.path.join(PLOTS_DIR, "raw_audio.png"))  
 
-    # ---- 2. bandpass filter ----
     filtered = bandpass_filter(audio, sr)                            # remove rumble + hiss, keep tap/resonance band
-    plot_audio(filtered, sr, "2. Bandpass Filtered Audio",
-               os.path.join(PLOTS_DIR, "02_filtered_audio.png"))      # save filtered waveform plot
+    plot_audio(filtered, sr, "Bandpass Filtered Audio",
+               os.path.join(PLOTS_DIR, "bandpass_filtered_audio.png"))     
 
-    # ---- 3. RMS normalize (filtered audio, for everything downstream except tap timing) ----
-    normalized_filtered = rms_normalize(filtered)                     # rescale filtered audio to target RMS level
-    plot_audio(normalized_filtered, sr, "3. RMS Normalized (Filtered) Audio",
-               os.path.join(PLOTS_DIR, "03_normalized_audio.png"))     # save normalized waveform plot
-
-    # ---- 3b. RMS normalize the RAW audio too (used only for tap detection's timing accuracy) ----
-    normalized_raw = rms_normalize(audio)                              # same normalization, but on the unfiltered signal
-
-    # ---- 4. tap detection (on raw audio, for best timing accuracy) ----
-    tap_sample, tap_time, energy, energy_times = detect_tap(normalized_raw, sr)  # find the tap onset
+    tap_sample, tap_time, energy, energy_times = detect_tap(filtered, sr)  
     print(f"Detected tap at t = {tap_time:.4f}s")                       # report the detected tap time
-    plot_tap_detection(normalized_raw, sr, tap_sample, energy, energy_times,
-                        "4. Tap Detection", os.path.join(PLOTS_DIR, "04_tap_detection.png"))  # save tap detection plot
+    plot_tap_detection(filtered, sr, tap_sample, energy, energy_times,
+                        "Tap Detection", os.path.join(PLOTS_DIR, "tap_detection.png")) 
 
-    # ---- 5. resonance window extraction (on filtered+normalized audio, for cleaner resonance shape) ----
+    # resonance window extraction (on filtered+normalized audio, for cleaner resonance shape) 
     resonance_audio, start_sample, end_sample = extract_resonance_window(
-        normalized_filtered, sr, tap_sample
-    )                                                                    # extract the resonance window after the tap
+        filtered, sr, tap_sample
+    )                                                                   
     print(f"Resonance window: {start_sample/sr:.4f}s -> {end_sample/sr:.4f}s "
           f"({(end_sample-start_sample)/sr:.4f}s long)")                  # report the extracted window's bounds
-    plot_resonance_window(normalized_filtered, sr, tap_sample, start_sample, end_sample,
-                           "5. Resonance Window Extraction",
-                           os.path.join(PLOTS_DIR, "05_resonance_window.png"))  # save resonance window plot
+    plot_resonance_window(filtered, sr, tap_sample, start_sample, end_sample,
+                           "Resonance Window Extraction",
+                           os.path.join(PLOTS_DIR, "resonance_window.png"))  
 
-    # --- 6 FFT computation ----
-    print("Maximum Frequency from this audio file is: ", analyze_resonance_fft(resonance_audio, sr, title="Frequency Distribution", save_path=os.path.join(PLOTS_DIR,"06. FFT Graph.png")))
+    print("Maximum Frequency from this audio file is: ", analyze_resonance_fft(resonance_audio, sr, title="Frequency Distribution", save_path=os.path.join(PLOTS_DIR,"FFT Graph.png")))
     
-    plot_audio(resonance_audio, sr, "7. Resonance Audio Graph", os.path.join(PLOTS_DIR, "07. resonance_audio.png"))  # resonance audio plot
-
-    # ---- 7. Spectrogram Analysis (Frequency vs Time) ----
-    plot_resonance_spectrogram(
-        resonance_audio, sr,
-        title="7. Resonance Spectrogram (Time-Frequency Energy Distribution)",
-        save_path=os.path.join(PLOTS_DIR, "07_resonance_spectrogram.png")
-    )
+    plot_audio(resonance_audio, sr, "Resonance Audio Graph", os.path.join(PLOTS_DIR, "resonance_audio.png"))  # resonance audio plot
     print(f"\nAll plots saved to ./{PLOTS_DIR}/")   # final confirmation message
 
 
-if __name__ == "__main__":   # only run main() when this file is executed directly (not when imported)
-    main()                    # kick off the full pipeline
+if __name__ == "__main__":   
+    main()                     
