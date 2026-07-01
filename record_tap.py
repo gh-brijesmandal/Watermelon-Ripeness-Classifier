@@ -1,6 +1,5 @@
 """
 record_tap.py
-
 Automates the full capture cycle for one (or many) watermelon taps:
 
     1. Open the mic and start recording into memory (non-blocking).
@@ -42,9 +41,9 @@ BAUD_RATE = 9600            # must match Serial.begin() in the .ino file
 SAMPLE_RATE = 48000         # Hz, matches what librosa.load() will read back
 CHANNELS = 1                # mono; your pipeline assumes a 1D audio array
 
-PRE_TAP_SETTLE_SEC = 0.4    # silence captured before the tap (background noise estimate)
+PRE_TAP_SETTLE_SEC = 1    # silence captured before the tap (background noise estimate)
 POST_TAP_CAPTURE_SEC = 1.5  # how long after the tap to keep recording (resonance decay)
-TOTAL_DURATION_SEC = PRE_TAP_SETTLE_SEC + POST_TAP_CAPTURE_SEC
+TOTAL_DURATION_SEC = PRE_TAP_SETTLE_SEC + 1 + POST_TAP_CAPTURE_SEC
 
 AUDIO_DIR = "./audio"
 

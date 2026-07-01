@@ -376,16 +376,16 @@ def main():
 
     audio, sr = load_audio(AUDIO_PATH, sr=None)                     # load the file at its native sample rate
     print(f"Loaded '{AUDIO_PATH}': sr={sr} Hz, duration={len(audio)/sr:.3f}s")  # quick console summary
-    plot_audio(audio, sr, " Raw Audio", os.path.join(PLOTS_DIR, "raw_audio.png"))  
+    plot_audio(audio, sr, " Raw Audio", os.path.join(PLOTS_DIR, "1. raw_audio.png"))  
 
     filtered = bandpass_filter(audio, sr)                            # remove rumble + hiss, keep tap/resonance band
     plot_audio(filtered, sr, "Bandpass Filtered Audio",
-               os.path.join(PLOTS_DIR, "bandpass_filtered_audio.png"))     
+               os.path.join(PLOTS_DIR, "2. bandpass_filtered_audio.png"))     
 
     tap_sample, tap_time, energy, energy_times = detect_tap(filtered, sr)  
     print(f"Detected tap at t = {tap_time:.4f}s")                       # report the detected tap time
     plot_tap_detection(filtered, sr, tap_sample, energy, energy_times,
-                        "Tap Detection", os.path.join(PLOTS_DIR, "tap_detection.png")) 
+                        "Tap Detection", os.path.join(PLOTS_DIR, "3. tap_detection.png")) 
 
     # resonance window extraction (on filtered+normalized audio, for cleaner resonance shape) 
     resonance_audio, start_sample, end_sample = extract_resonance_window(
@@ -395,7 +395,7 @@ def main():
           f"({(end_sample-start_sample)/sr:.4f}s long)")                  # report the extracted window's bounds
     plot_resonance_window(resonance_audio, sr, tap_sample, start_sample, end_sample,
                            "Resonance Window Extraction",
-                           os.path.join(PLOTS_DIR, "resonance_window.png"))  
+                           os.path.join(PLOTS_DIR, "4. resonance_window.png"))  
 
     # take the time domain features and console log it 
     time_domain_features = extract_time_domain_features(resonance_audio, sample_rate=sr)
@@ -405,9 +405,9 @@ def main():
     frequency_domain_features = extract_frequency_domain_features(resonance_audio, sr,WATERMELON_MASS)
     print(frequency_domain_features)
 
-    print("Maximum Frequency from this audio file is: ", analyze_resonance_fft(resonance_audio, sr, title="Frequency Distribution", save_path=os.path.join(PLOTS_DIR,"FFT Graph.png")))
+    print("Maximum Frequency from this audio file is: ", analyze_resonance_fft(resonance_audio, sr, title="Frequency Distribution", save_path=os.path.join(PLOTS_DIR,"5. FFT Graph.png")))
     
-    plot_audio(resonance_audio, sr, "Resonance Audio Graph", os.path.join(PLOTS_DIR, "resonance_audio.png"))  # resonance audio plot
+    plot_audio(resonance_audio, sr, "Resonance Audio Graph", os.path.join(PLOTS_DIR, "6. resonance_audio.png"))  # resonance audio plot
     print(f"\nAll plots saved to ./{PLOTS_DIR}/")   # final confirmation message
 
 
