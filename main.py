@@ -14,8 +14,8 @@ LOW_HZ = 80                         # bandpass: frequencies below this are remov
 HIGH_HZ = 2000                      # bandpass: frequencies above this are removed (hiss/high-freq noise)
 FILTER_ORDER = 4                    # Butterworth filter steepness (4 = gentle, safe default)
 TAP_K = 8.0                         # tap detector: how many MADs above background energy counts as a tap
-TAP_IGNORE_START_SEC = 0.02         # tap detector: ignore this much audio at the very start (edge artifacts)
-RESONANCE_GAP_SEC = 0.02            # resonance window: skip this much time right after the tap (clears the click)
+TAP_IGNORE_START_SEC = 0.03         # tap detector: ignore this much audio at the very start (edge artifacts)
+RESONANCE_GAP_SEC = 0.03            # resonance window: skip this much time right after the tap (clears the click)
 RESONANCE_WINDOW_SEC = 0.3          # resonance window: total length of the extracted resonance window
 RESONANCE_SEARCH_SEC = 0.5          # resonance window: how far past the gap to search for the resonance peak
 
