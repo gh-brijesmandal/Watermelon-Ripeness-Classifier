@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt                     # plotting and saving figure
 from scipy.signal import butter, sosfiltfilt, find_peaks, hilbert        # Butterworth bandpass filter design + zero-phase application
 import librosa.display                             # for spectrogram matrix
 from scipy.stats import skew, kurtosis
+import sys
 
 WATERMELON_MASS = 5000              # 5000 grams
-AUDIO_PATH = "./audio/sample_2.wav"   
+AUDIO_PATH = "./audio/" + sys.argv[1]            # [0] is the script name itself
 PLOTS_DIR = "plots"                
 LOW_HZ = 80                         # bandpass: frequencies below this are removed (rumble/DC drift)
 HIGH_HZ = 2000                      # bandpass: frequencies above this are removed (hiss/high-freq noise)

@@ -39,7 +39,7 @@ SERIAL_PORT = None          # e.g. "COM5" on Windows, "/dev/ttyACM0" on Linux/Ma
                              # Leave as None to auto-detect the first Arduino-like port.
 BAUD_RATE = 9600            # must match Serial.begin() in the .ino file
 
-SAMPLE_RATE = 44100         # Hz, matches what librosa.load() will read back
+SAMPLE_RATE = 48000         # Hz, matches what librosa.load() will read back
 CHANNELS = 1                # mono; your pipeline assumes a 1D audio array
 
 PRE_TAP_SETTLE_SEC = 0.4    # silence captured before the tap (background noise estimate)
