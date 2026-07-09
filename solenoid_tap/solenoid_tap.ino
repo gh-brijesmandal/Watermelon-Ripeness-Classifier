@@ -4,7 +4,7 @@
 // solenoid for TAP_DURATION_MS, then releases. One tap per 'T' received.
 
 const int SOLENOID_PIN   = 2;     // same pin you were already using
-const int TAP_DURATION_MS = 40;   // how long the solenoid stays energized
+const int TAP_DURATION_MS = 60;   // how long the solenoid stays energized
                                    // tune this: too long = solenoid "pushes through"
                                    // and muffles the melon's natural ring,
                                    // too short = it may not strike with enough force.
