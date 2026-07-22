@@ -31,9 +31,7 @@ import soundfile as sf
 import serial
 import serial.tools.list_ports
 
-# ---------------------------------------------------------------------------
 # Config -- adjust these to match your hardware
-# ---------------------------------------------------------------------------
 SERIAL_PORT = None          # e.g. "COM5" on Windows, "/dev/ttyACM0" on Linux/Mac.
                              # Leave as None to auto-detect the first Arduino-like port.
 BAUD_RATE = 9600            # must match Serial.begin() in the .ino file
@@ -47,10 +45,7 @@ TOTAL_DURATION_SEC = PRE_TAP_SETTLE_SEC + 1 + POST_TAP_CAPTURE_SEC
 
 AUDIO_DIR = "./audio"
 
-
-# ---------------------------------------------------------------------------
 # Arduino connection
-# ---------------------------------------------------------------------------
 def find_arduino_port():
     """Best-effort auto-detect: look for a port whose description mentions
     'Arduino' or a common USB-serial chip name. Falls back to None."""
@@ -86,9 +81,7 @@ def trigger_tap(ser):
         print(f"  warning: no/unexpected ack from Arduino (got: {ack!r})")
 
 
-# ---------------------------------------------------------------------------
 # Recording
-# ---------------------------------------------------------------------------
 def record_one_tap(ser, output_path):
     """
     Records audio while triggering exactly one solenoid tap partway through.
@@ -112,9 +105,7 @@ def record_one_tap(ser, output_path):
     print(f"  saved: {output_path}  (tap fired ~{approx_tap_offset:.2f}s into the clip)")
 
 
-# ---------------------------------------------------------------------------
 # Main
-# ---------------------------------------------------------------------------
 def main():
     parser = argparse.ArgumentParser(description="Record watermelon taps for the ripeness pipeline.")
     parser.add_argument("--melon-id", type=str, required=True,
