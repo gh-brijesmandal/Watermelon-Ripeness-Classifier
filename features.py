@@ -8,8 +8,8 @@ Watermelon ripeness acoustic pipeline:
   6. Extract ripeness-relevant features from the resonance window
 
   Usage: 
-  python or python3 features.py --mass 5 --id 12 --file melon1_tap1.wav
-  i.e, python features.py --mass (the mass value in grams) --id (melon id) --file (file name in audio folder)
+  python or python3 features.py --mass 5 --id 12 --tap 1 --file melon1_tap1.wav
+  i.e, python features.py --mass (the mass value in grams) --id (melon id) --tap (tap number) --file (file name in audio folder)
 """
 
 import os 
@@ -19,19 +19,22 @@ from scipy.signal import butter, filtfilt, hilbert
 import matplotlib.pyplot as plt
 from openpyxl import Workbook, load_workbook
 import argparse
+import librosa
 
 # take data from command line
 parser = argparse.ArgumentParser()
 parser.add_argument("--file", type=str, required=True)
 parser.add_argument("--mass", type=float, required=False)  # make sure its in grams
 parser.add_argument("--id", type=int, required=True)
+parser.add_argument("--tap", type=int, required=True)
 args = parser.parse_args()
 
 # Define your variables here
 file_path = "./audio/" + args.file
-mass = (args.mass) or (0)
+mass = args.mass if args.mass is not None else 0
 melon_id = args.id
 excel_path = "./Data/Features.xlsx"
+tap_id = args.tap
 
 # this is audio loading and tap detecting part
 def load_audio(file_path):
@@ -161,9 +164,18 @@ def spectral_rolloff(signal, sr, roll_percent=0.85):
 def stiffness_index(peak_freq, mass): 
     "This gives estimate of firmness quality of the watermelon and is highly correlated with ripeness."
     if (mass == 0): 
-        return None
+        return 0
     return (peak_freq ** 2) * (mass ** (2/3))
 
+
+def extract_mfcc(resonance_window, sr, n_mfcc=13):
+    "# Extracts MFCC features from a resonance window using librosa and Returns the mean MFCC vector across time frames for use as a feature set"
+    mfccs = librosa.feature.mfcc(y=resonance_window, sr=sr, n_mfcc=n_mfcc)
+    return np.mean(mfccs, axis=1)
+
+def flatten_mfcc(mfcc_features):
+    "Converts an MFCC vector into a dict of individually named columns for Excel"
+    return {f"mfcc_{i+1}": val for i, val in enumerate(mfcc_features)}
 
 def write_features_to_excel(file_path, data: dict):
     "Appends a row of feature data to the Excel file, creating it with headers if it doesn't exist"
@@ -204,9 +216,12 @@ def main():
     spec_cent = spectral_centroid(window, sr)
     spec_roll = spectral_rolloff(window, sr)
     stiff_index = stiffness_index(peak_freq = peak_freq, mass = mass)
+    mfcc_features = extract_mfcc(window, sr=sr)
+    mfcc_dict = flatten_mfcc(mfcc_features)
 
     feature_data = {
         "melon_id": melon_id,
+        "tap_id": tap_id,
         "mass": mass,
         "fund_res_freq": fund_res_freq,
         "peak_freq": peak_freq,
@@ -215,7 +230,9 @@ def main():
         "zcr": zcr,
         "spec_cent": spec_cent,
         "spec_roll": spec_roll,
-        "stiff_index": stiff_index
+        "stiff_index": stiff_index,
+        # "mfcc_features": mfcc_features,   # this is an array and cant be kept directly into excel
+        **mfcc_dict
     }
 
     print(f"""
@@ -227,7 +244,8 @@ def main():
             Zero Crossing Rate: {zcr},
             Spectral Centroid: {spec_cent},
             Spectral Rolloff: {spec_roll},
-            Stiffness Index: {stiff_index}.
+            Stiffness Index: {stiff_index},
+            MFCC Features: {mfcc_features}.
     """)
     write_features_to_excel(excel_path, data=feature_data)
 
